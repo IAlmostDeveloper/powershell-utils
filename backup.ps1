@@ -1,13 +1,15 @@
-# Скрипт для бэкапа указанных папок
-
 $Destination = "D:\_Backup"
+
 $Versions = "2"
 $Backupdirs = "C:\Users\developer\Desktop", "D:\projects"
-$ExcludeDirs = ($env:SystemDrive + "\Users\.*\AppData\Local"), "C:\Program Files (x86)\"
+$ExcludeDirs = ($env:SystemDrive + "\Users\.*\AppData\Local"), ".*\bin.*", ".*\build.*", ".*\eclipse\saves.*", ".*\obj.*"
+
 $logPath = "D:\_Backup"
 $LogfileName = "Log"
 $LoggingLevel = "3" #LoggingLevel only for Output in Powershell Window, 1=smart, 3=Heavy
+
 $Zip = $true
+
 Add-Type -AssemblyName "System.IO.Compression.FileSystem";
 
 function Log-To-File {
@@ -49,6 +51,7 @@ New-Item -Path $BackupDestination -ItemType Directory | Out-Null
 
 foreach ($Dir in $Backupdirs) {
     if ((Test-Path $Dir)) {
+        
         Log-To-File -Type INFO -Text "$Dir is fine"
         $FinalBackupdirs += $Dir
     }
@@ -156,10 +159,13 @@ catch {
 
 if ($Zip) {     
     try {
+        Log-To-File -Type INFO -Text $BackupDestination;
+        Log-To-File -Type INFO -Text "$BackupDestination.zip";
         [IO.Compression.ZipFile]::CreateFromDirectory($BackupDestination, "$BackupDestination.zip");       
         Remove-Item $BackupDestination -Force -Recurse
     }
     catch {
+        Log-To-File -Type ERROR -Text $Error
         throw;
     }
 }
@@ -174,11 +180,15 @@ if ($count -gt $Versions) {
     $Folder.FullName | Remove-Item -Recurse -Force 
 }
 
+
 $CountZip = (Get-ChildItem $Destination | Where-Object { $_.Attributes -eq "Archive" -and $_.Extension -eq ".zip" }).count
 Log-To-File -Type Info -Text "Check if there are more than $Versions Zip in the Backupdir"
 
 if ($CountZip -gt $Versions) {
+
     $Zip = Get-ChildItem $Destination | Where-Object { $_.Attributes -eq "Archive" -and $_.Extension -eq ".zip" } | Sort-Object -Property CreationTime -Descending:$false | Select-Object -First 1
+
     Log-To-File -Type Info -Text "Remove Zip: $Zip"
+    
     $Zip.FullName | Remove-Item -Recurse -Force 
 }
